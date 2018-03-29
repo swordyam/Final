@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE mapper PUBLIC
+"-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="Board">
+
+	<resultMap id="resultBoard" type="Board">
+		<id property="boardNum" column="BOARD_NUM" />
+  		<result property="boardTitle" column="BOARD_TITLE"/>
+  		<result property="boardWriter" column="BOARD_WRITER"/>
+  		<result property="boardContent" column="BOARD_CONTENT"/>
+  		<result property="boardOriginalFileName" column="BOARD_ORIGINAL_FILENAME"/>
+  		<result property="boardRenameFileName" column="BOARD_RENAME_FILENAME"/>
+  		<result property="boardDate" column="BOARD_DATE"/>
+  		<result property="boardLevel" column="BOARD_LEVEL"/>
+  		<result property="boardRef" column="BOARD_REF"/>
+  		<result property="boardReplyRef" column="BOARD_REPLY_REF"/>
+  		<result property="boardReplySeq" column="BOARD_REPLY_SEQ"/>
+  		<result property="boardReadCount" column="BOARD_READCOUNT"/>
+	</resultMap>
+	
+	<select id="getListCount" resultType="_int">
+		SELECT COUNT(*) FROM BOARD
+	</select>
+	
+	<select id="selectList" resultMap="resultBoard">
+		SELECT * FROM (SELECT * FROM BOARD ORDER BY BOARD_REF DESC, 
+			BOARD_REPLY_REF DESC, BOARD_LEVEL, BOARD_REPLY_SEQ)	
+	</select>
+	
+	<select id="selectTop5" resultMap="resultBoard">
+		SELECT * FROM BOARD WHERE BOARD_LEVEL = 0 ORDER BY BOARD_READCOUNT DESC
+	</select>
+	
+	<select id="selectOne" parameterType="_int" resultMap="resultBoard">
+		SELECT * FROM BOARD WHERE BOARD_NUM = #{boardNum}
+	</select>
+	
+	<insert id="insertBoard" parameterType="Board">
+ 		INSERT INTO BOARD VALUES 
+		((SELECT MAX(BOARD_NUM) + 1 FROM BOARD),
+			#{boardTitle}, #{boardWriter}, #{boardContent}, #{boardOriginalFileName},
+			#{boardRenameFileName}, SYSDATE, 0, (SELECT MAX(BOARD_NUM) + 1 FROM BOARD),
+		NULL, default, default)
+  	</insert>
+
+   	<insert id="insertReplyLevel">
+ 		INSERT INTO BOARD VALUES 
+		((SELECT MAX(BOARD_NUM) + 1 FROM BOARD),
+			#{boardTitle}, #{boardWriter}, #{boardContent}, NULL, NULL, 
+			SYSDATE, #{boardLevel}, #{boardRef}, 
+			<if test="boardLevel == 1">
+				(SELECT MAX(BOARD_NUM) + 1 FROM BOARD),
+			</if>
+			<if test="boardLevel == 2">
+				#{boardReplyRef},
+			</if>
+			 1, default)
+  	</insert>
+
+  	<update id="addReadCount">
+	  	UPDATE BOARD SET BOARD_READCOUNT = (BOARD_READCOUNT + 1) WHERE BOARD_NUM = #{boardNum}
+ 	</update>
+
+	<update id="updateBoard">
+		UPDATE BOARD SET BOARD_TITLE = #{boardTitle}, BOARD_CONTENT = #{boardContent},
+		BOARD_ORIGINAL_FILENAME = #{boardOriginalFileName},
+		BOARD_RENAME_FILENAME = #{boardRenameFileName} 
+		WHERE BOARD_NUM = #{boardNum}
+ 	</update>
+
+	<update id="updateBoardReply">
+		UPDATE BOARD SET BOARD_TITLE = #{boardTitle}, BOARD_CONTENT = #{boardContent}
+		WHERE BOARD_NUM = #{boardNum}
+ 	</update>
+
+	<update id="updateReplySeq">
+		UPDATE BOARD SET BOARD_REPLY_SEQ = BOARD_REPLY_SEQ + 1
+		WHERE BOARD_REF = #{boardRef}
+		AND BOARD_LEVEL = #{boardLevel}
+		AND BOARD_REPLY_REF = #{boardReplyRef}
+ 	</update>
+ 
+	<delete id="deleteBoard">
+		DELETE FROM BOARD WHERE BOARD_NUM = #{boardNum}
+  	</delete>
+</mapper>
